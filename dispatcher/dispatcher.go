@@ -19,7 +19,7 @@ type Dispatcher interface {
 }
 
 type dispatcherImpl struct {
-	cmd []byte // command buffer
+	cmd []rune // command buffer
 	cur int    // cursor position
 
 	parser *vtparser.Parser
@@ -35,7 +35,7 @@ func Parse(r io.Reader) string {
 }
 
 func NewDispatcher() Dispatcher {
-	dispatcher := &dispatcherImpl{cmd: []byte{}, logger: log.New(io.Discard, "", log.LstdFlags)}
+	dispatcher := &dispatcherImpl{cmd: []rune{}, logger: log.New(io.Discard, "", log.LstdFlags)}
 	parser := vtparser.New(
 		dispatcher.print,
 		dispatcher.execute,
@@ -51,7 +51,7 @@ func NewDispatcher() Dispatcher {
 }
 
 func NewDispatcherWithLogger(logger *log.Logger) *dispatcherImpl {
-	dispatcher := &dispatcherImpl{cmd: []byte{}, logger: logger}
+	dispatcher := &dispatcherImpl{cmd: []rune{}, logger: logger}
 	parser := vtparser.New(
 		dispatcher.print,
 		dispatcher.execute,
@@ -67,6 +67,12 @@ func NewDispatcherWithLogger(logger *log.Logger) *dispatcherImpl {
 }
 
 func (d *dispatcherImpl) Write(r io.Reader) error {
+	defer func() {
+		if err := recover(); err != nil {
+			d.logger.Printf("[Write] panic: %v\n", err)
+		}
+	}()
+
 	buff := make([]byte, 2048)
 
 	for {
@@ -89,9 +95,9 @@ func (d *dispatcherImpl) Write(r io.Reader) error {
 }
 
 func (d *dispatcherImpl) Flush() string {
-	d.logger.Printf("[Flush] %s\n", d.cmd)
+	d.logger.Printf("[Flush] %s\n", string(d.cmd))
 	str := string(d.cmd)
-	d.cmd = []byte{}
+	d.cmd = []rune{}
 	d.cur = 0
 	return str
 }
@@ -107,9 +113,9 @@ func (d *dispatcherImpl) Parse(r io.Reader) string {
 func (d *dispatcherImpl) print(r rune) {
 	d.logger.Printf("[Print] %c\n", r)
 	if len(d.cmd) > d.cur {
-		d.cmd[d.cur] = byte(r)
+		d.cmd[d.cur] = r
 	} else {
-		d.cmd = append(d.cmd, byte(r))
+		d.cmd = append(d.cmd, r)
 	}
 	d.cur++
 }
@@ -117,7 +123,11 @@ func (d *dispatcherImpl) print(r rune) {
 func (d *dispatcherImpl) execute(b byte) {
 	d.logger.Printf("[Execute] %02x\n", b)
 	if b == '\b' {
-		d.cur--
+		if d.cmd[d.cur-1] > 127 {
+			d.cmd[d.cur-1] = ' '
+		} else {
+			d.cur--
+		}
 	}
 }
 
@@ -140,10 +150,16 @@ func (d *dispatcherImpl) oscDispatch(params [][]byte, bellTerminated bool) {
 func (d *dispatcherImpl) csiDispatch(params []int64, intermediates []byte, ignore bool, r rune) {
 	d.logger.Printf("[CsiDispatch] params=%v, intermediates=%v, ignore=%v, r=%v\n", params, intermediates, ignore, r)
 	switch r {
+	case 64:
+		d.cmd = append(append(d.cmd[:d.cur], 0), d.cmd[d.cur:]...)
 	case 71:
 		d.cur = int(params[0]) - 1
 		d.cmd = d.cmd[:d.cur]
 	case 75:
+		if len(d.cmd) > d.cur {
+			d.cmd = append(d.cmd[:d.cur], d.cmd[d.cur+1:]...)
+		}
+	case 80:
 		if len(d.cmd) > d.cur {
 			d.cmd = append(d.cmd[:d.cur], d.cmd[d.cur+1:]...)
 		}
