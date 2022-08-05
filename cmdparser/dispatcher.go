@@ -1,4 +1,4 @@
-package dispatcher
+package cmdparser
 
 import (
 	"fmt"
@@ -7,16 +7,7 @@ import (
 	"log"
 )
 
-var _ Dispatcher = &dispatcherImpl{}
-
-var defaultDispatcher Dispatcher
-
-// Dispatcher is the interface that wraps the methods of the dispatcher
-type Dispatcher interface {
-	Parse(r io.Reader) string
-	Write(r io.Reader) error
-	Flush() string
-}
+var _ CMDParser = &dispatcherImpl{}
 
 type dispatcherImpl struct {
 	cmd []rune // command buffer
@@ -27,14 +18,7 @@ type dispatcherImpl struct {
 	logger *log.Logger
 }
 
-func Parse(r io.Reader) string {
-	if defaultDispatcher == nil {
-		defaultDispatcher = NewDispatcher()
-	}
-	return defaultDispatcher.Parse(r)
-}
-
-func NewDispatcher() Dispatcher {
+func NewDispatcher() CMDParser {
 	dispatcher := &dispatcherImpl{cmd: []rune{}, logger: log.New(io.Discard, "", log.LstdFlags)}
 	parser := vtparser.New(
 		dispatcher.print,

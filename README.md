@@ -6,7 +6,7 @@
 
 A GO library for parse terminal command with ANSI escape code sequence to human-readable text.
 
-The pkg `dispatcher` implements a dispatcher that can dispatch byte of input and finally parse to human-readable text for audit.; more information can be found here: http://www.vt100.net/emu/dec_ansi_parser.
+The pkg `cmdparser` implements a dispatcher that can dispatch byte of input and finally parse to human-readable text for audit.; more information can be found here: http://www.vt100.net/emu/dec_ansi_parser.
 
 NOTE: This library is still in development.Only support few ANSI escape code sequence now.
 
@@ -30,7 +30,7 @@ go get -u github.com/nangcr/vt-command
 And then import the package in your code:
 
 ```go
-import "github.com/nangcr/vt-command/dispatcher"
+import "github.com/nangcr/vt-command/cmdparser"
 ```
 
 ### Example
@@ -42,12 +42,12 @@ package main
 
 import (
 	"fmt"
-	"github.com/nangcr/vt-command/dispatcher"
+	"github.com/nangcr/vt-command/cmdparser"
 	"strings"
 )
 
 func main() {
-	d := dispatcher.NewDispatcher()
+	d := cmdparser.NewDispatcher()
 
 	err := d.Write(strings.NewReader("mysql> show databases;\u001B[9Gelect 1;\u001B[K"))
 	if err != nil {

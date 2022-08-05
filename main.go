@@ -2,12 +2,12 @@ package main
 
 import (
 	"fmt"
-	"github.com/nangcr/vt-command/dispatcher"
+	"github.com/nangcr/vt-command/cmdparser"
 	"os"
 )
 
 func main() {
-	d := dispatcher.NewDispatcher()
+	d := cmdparser.NewDispatcher()
 
 	err := d.Write(os.Stdin)
 	if err != nil {
